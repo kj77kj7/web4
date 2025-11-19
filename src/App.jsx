@@ -13,7 +13,7 @@ const REDIRECT_URL = "https://kj77kj7.github.io/WEB5/";
 
 export default function App() {
   /* ============================================================
-      ★★★ web5식 프리로더 적용
+      ★★★ web5식 프리로더 적용 (전체 1132장 로딩)
   ============================================================ */
   const [loading, setLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
@@ -29,10 +29,13 @@ export default function App() {
         img.src = src;
       });
 
-    // 빠른 샘플 로딩
-    const sample = Array.from({ length: 40 }, (_, i) => getImagePath(i));
+    // ◆ 전체 프레임 로딩
+    const frameList = Array.from(
+      { length: TOTAL_FRAMES },
+      (_, i) => getImagePath(i)
+    );
 
-    const total = sample.length + 1;
+    const total = frameList.length;
     let done = 0;
 
     const bump = () => {
@@ -42,10 +45,7 @@ export default function App() {
       }
     };
 
-    Promise.all([
-      ...sample.map((s) => loadImage(s).then(bump)),
-      new Promise((r) => setTimeout(r, 900)).then(bump),
-    ]).then(() => {
+    Promise.all(frameList.map((src) => loadImage(src).then(bump))).then(() => {
       if (cancelled) return;
 
       setLoadProgress(100);
@@ -84,6 +84,7 @@ export default function App() {
       const maxScrollTop = container.scrollHeight - container.clientHeight;
       const scrollTop = container.scrollTop;
       const scrollFraction = maxScrollTop > 0 ? scrollTop / maxScrollTop : 0;
+
       const frameIndex = Math.min(
         TOTAL_FRAMES - 1,
         Math.floor(scrollFraction * TOTAL_FRAMES)
@@ -106,6 +107,7 @@ export default function App() {
     const onScroll = () => {
       if (ticking) return;
       ticking = true;
+
       requestAnimationFrame(() => {
         updateFrame();
         ticking = false;
@@ -182,6 +184,7 @@ export default function App() {
     const onMove = (e) => {
       const w = window.innerWidth,
         h = window.innerHeight;
+
       const cx = e.clientX ?? e.touches?.[0]?.clientX ?? w / 2;
       const cy = e.clientY ?? e.touches?.[0]?.clientY ?? h / 2;
 
@@ -201,7 +204,6 @@ export default function App() {
 
     let raf = 0;
     const tick = (now = performance.now()) => {
-      const dt = now - lastTick;
       lastTick = now;
 
       if (now - lastMove > IDLE_DELAY) {
