@@ -1,3 +1,4 @@
+/* 기존 스타일 유지 */
 #root {
   max-width: 1280px;
   margin: 0 auto;
@@ -19,12 +20,8 @@
 }
 
 @keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -33,10 +30,66 @@
   }
 }
 
-.card {
-  padding: 2em;
+.card { padding: 2em; }
+.read-the-docs { color: #888; }
+
+
+/* ============================================================
+      ★★★ web5 스타일의 프리로더 (web4용 최적화) ★★★
+============================================================ */
+.preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: #000;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 420ms ease, visibility 0s linear 420ms;
 }
 
-.read-the-docs {
-  color: #888;
+.preloader.is-visible {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 420ms ease, visibility 0s;
+}
+
+.preloader-inner {
+  width: min(420px, 80vw);
+  text-align: center;
+}
+
+.preloader-title {
+  font-size: 26px;
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+
+.preloader-bar {
+  width: 100%;
+  height: 8px;
+  background: #222;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.preloader-bar-fill {
+  height: 100%;
+  background: #ff4242;
+  width: 0%;
+  transform-origin: left center;
+  transition: width 200ms linear;
+}
+
+.preloader-sub {
+  margin-top: 10px;
+  font-size: 14px;
+  opacity: 0.8;
 }

@@ -1,21 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
-import FXOverlay from './FXOverlay';
-import './index.css';
+import React, { useState, useEffect, useRef } from "react";
+import FXOverlay from "./FXOverlay";
+import "./index.css";
 
-// ★ 프리로더 추가
 import Preloader from "./Preloader.jsx";
 import "./Preloader.css";
 
 // --- 설정 ---
 const TOTAL_FRAMES = 1132;
 const getImagePath = (frame) => `/web4/frames/(${frame + 1}).jpg`;
-const REDIRECT_URL = 'https://www.naver.com';
+const REDIRECT_URL = "https://www.naver.com";
 // ---
 
 export default function App() {
-
   /* ============================================================
-      ★★★ 프리로더 로딩 상태
+      ★★★ web5식 프리로더 적용
   ============================================================ */
   const [loading, setLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
@@ -31,7 +29,7 @@ export default function App() {
         img.src = src;
       });
 
-    // 첫 40개 샘플만 빠르게 로딩
+    // 빠른 샘플 로딩
     const sample = Array.from({ length: 40 }, (_, i) => getImagePath(i));
 
     const total = sample.length + 1;
@@ -46,20 +44,26 @@ export default function App() {
 
     Promise.all([
       ...sample.map((s) => loadImage(s).then(bump)),
-      new Promise((r) => setTimeout(r, 800)).then(bump),
+      new Promise((r) => setTimeout(r, 900)).then(bump),
     ]).then(() => {
       if (cancelled) return;
 
       setLoadProgress(100);
-      setTimeout(() => setLoading(false), 350); // fade-out 이후 종료
+
+      setTimeout(() => {
+        if (!cancelled) setLoading(false);
+      }, 450);
     });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   /* ============================================================
-      기존 App 코드
+      기존 web4 코드 유지
   ============================================================ */
+
   const [currentFrame, setCurrentFrame] = useState(0);
   const [effectsOn, setEffectsOn] = useState(true);
   const [isFading, setIsFading] = useState(false);
@@ -69,7 +73,7 @@ export default function App() {
   const sceneRef = useRef(null);
   const hasRedirected = useRef(false);
 
-  // 스크롤 → 프레임 연결
+  // 스크롤 → 프레임
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -88,7 +92,6 @@ export default function App() {
       setCurrentFrame((prev) => (prev !== frameIndex ? frameIndex : prev));
       setScrollPos(scrollTop.toFixed(0));
 
-      // 스크롤 바닥 -> 페이드아웃 후 이동
       const distanceFromBottom = maxScrollTop - scrollTop;
       if (distanceFromBottom < 300 && !hasRedirected.current) {
         hasRedirected.current = true;
@@ -110,8 +113,8 @@ export default function App() {
     };
 
     updateFrame();
-    container.addEventListener('scroll', onScroll, { passive: true });
-    return () => container.removeEventListener('scroll', onScroll);
+    container.addEventListener("scroll", onScroll, { passive: true });
+    return () => container.removeEventListener("scroll", onScroll);
   }, []);
 
   // 프레임 선로드
@@ -128,18 +131,20 @@ export default function App() {
     }
   }, [currentFrame, effectsOn]);
 
-  // 마지막 프레임에서 효과 off
+  // 마지막 프레임에서 효과 종료
   useEffect(() => {
     const atEnd = currentFrame >= TOTAL_FRAMES - 1;
     setEffectsOn(!atEnd);
   }, [currentFrame]);
 
-  // 카메라 팬 / 마우스 반응 (기존 유지)
+  // 마우스 팬 효과
   useEffect(() => {
     if (!effectsOn) return;
 
-    const CAM_W = 2100, CAM_H = 1200;
-    const SCENE_W = 1920, SCENE_H = 1080;
+    const CAM_W = 2100,
+      CAM_H = 1200;
+    const SCENE_W = 1920,
+      SCENE_H = 1080;
     const MAX_X = CAM_W - SCENE_W;
     const MAX_Y = CAM_H - SCENE_H;
 
@@ -150,8 +155,10 @@ export default function App() {
     const baseX = (CAM_W - SCENE_W) / 2;
     const baseY = (CAM_H - SCENE_H) / 2;
 
-    let targetX = 0, targetY = 0;
-    let curX = 0, curY = 0;
+    let targetX = 0,
+      targetY = 0;
+    let curX = 0,
+      curY = 0;
 
     let lastMove = performance.now();
     let lastTick = performance.now();
@@ -173,7 +180,8 @@ export default function App() {
     }
 
     const onMove = (e) => {
-      const w = window.innerWidth, h = window.innerHeight;
+      const w = window.innerWidth,
+        h = window.innerHeight;
       const cx = e.clientX ?? e.touches?.[0]?.clientX ?? w / 2;
       const cy = e.clientY ?? e.touches?.[0]?.clientY ?? h / 2;
 
@@ -201,13 +209,13 @@ export default function App() {
         targetY = 0;
       }
 
-      const alpha = LERP_ALPHA;
-      curX += (targetX - curX) * alpha;
-      curY += (targetY - curY) * alpha;
+      curX += (targetX - curX) * LERP_ALPHA;
+      curY += (targetY - curY) * LERP_ALPHA;
 
       if (sceneRef.current) {
-        sceneRef.current.style.transform =
-          `translate3d(${baseX + curX}px, ${baseY + curY}px, 0)`;
+        sceneRef.current.style.transform = `translate3d(${
+          baseX + curX
+        }px, ${baseY + curY}px, 0)`;
       }
 
       raf = requestAnimationFrame(tick);
@@ -231,11 +239,10 @@ export default function App() {
   ============================================================ */
   return (
     <>
-
-      {/* ★★★ 프리로더 ★★★ */}
+      {/* ★★★ 프리로더 표시 ★★★ */}
       <Preloader visible={loading} progress={loadProgress} />
 
-      {/* ---------- 기존 화면 ---------- */}
+      {/* ---------- 기존 web4 UI ---------- */}
       <div className="page-1920">
         <div ref={scrollContainerRef} className="scroll-container">
           <div className="scroll-content">
@@ -267,7 +274,6 @@ export default function App() {
 
       {effectsOn && <FXOverlay />}
 
-      {/* 디버그 */}
       <div
         style={{
           position: "fixed",
@@ -284,7 +290,6 @@ export default function App() {
         scrollTop: {scrollPos}px
       </div>
 
-      {/* 페이드아웃 */}
       {isFading && (
         <div
           style={{
@@ -312,7 +317,6 @@ export default function App() {
           100% { opacity: 1; }
         }
       `}</style>
-
     </>
   );
 }
