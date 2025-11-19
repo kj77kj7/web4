@@ -5,7 +5,7 @@ import "./style.css";
 
 function useCustomCursor() {
   useEffect(() => {
-      const PNG_URL = "/web4/cursor.png"; // public 폴더 기준
+    const PNG_URL = "/web4/cursor.png"; // public 폴더 기준
     const SIZE = 50;               // 
     const HOT_X = SIZE / 2;        // 중심축 X = 12.5px
     const HOT_Y = SIZE / 2;        // 중심축 Y = 12.5px
