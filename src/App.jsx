@@ -5,7 +5,7 @@ import './index.css';
 // --- 설정 (유지) ---
 // ✅ 시퀀스 총 장수: 1132장으로 고정
 const TOTAL_FRAMES = 1132;
-const getImagePath = (frame) => `/frames/(${frame + 1}).jpg`;
+const getImagePath = (frame) => `/web4/frames/(${frame + 1}).jpg`;
 // ✅ 스크롤 끝 → 페이드아웃 후 이동할 URL
 const REDIRECT_URL = 'https://www.naver.com';
 // --- 
