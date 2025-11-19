@@ -2,21 +2,24 @@ import React, { useState, useEffect, useRef } from 'react';
 import FXOverlay from './FXOverlay';
 import './index.css';
 
-import Preloader from "./Preloader.jsx";    // ★ 추가
+// ★ 프리로더 추가
+import Preloader from "./Preloader.jsx";
+import "./Preloader.css";
 
-// --- 설정 (유지) ---
+// --- 설정 ---
 const TOTAL_FRAMES = 1132;
 const getImagePath = (frame) => `/web4/frames/(${frame + 1}).jpg`;
 const REDIRECT_URL = 'https://www.naver.com';
-// --- 
+// ---
 
 export default function App() {
 
-  // ★ 프리로더 상태
+  /* ============================================================
+      ★★★ 프리로더 로딩 상태
+  ============================================================ */
   const [loading, setLoading] = useState(true);
   const [loadProgress, setLoadProgress] = useState(0);
 
-  // ★ 프리로더 로딩 로직
   useEffect(() => {
     let cancelled = false;
 
@@ -28,7 +31,7 @@ export default function App() {
         img.src = src;
       });
 
-    // 프레임 40개만 샘플 프리로드 (전체 1132장 로딩 X)
+    // 첫 40개 샘플만 빠르게 로딩
     const sample = Array.from({ length: 40 }, (_, i) => getImagePath(i));
 
     const total = sample.length + 1;
@@ -36,70 +39,86 @@ export default function App() {
 
     const bump = () => {
       done += 1;
-      const percent = Math.min(100, (done / total) * 100);
-      if (!cancelled) setLoadProgress(percent);
+      if (!cancelled) {
+        setLoadProgress(Math.min(100, (done / total) * 100));
+      }
     };
 
     Promise.all([
       ...sample.map((s) => loadImage(s).then(bump)),
-      new Promise((r) => setTimeout(r, 900)).then(bump),   // 최소 지속시간
+      new Promise((r) => setTimeout(r, 800)).then(bump),
     ]).then(() => {
       if (cancelled) return;
+
       setLoadProgress(100);
-      setTimeout(() => setLoading(false), 350);
+      setTimeout(() => setLoading(false), 350); // fade-out 이후 종료
     });
 
     return () => { cancelled = true; };
   }, []);
 
-  // ★ 기존 코드
+  /* ============================================================
+      기존 App 코드
+  ============================================================ */
   const [currentFrame, setCurrentFrame] = useState(0);
   const [effectsOn, setEffectsOn] = useState(true);
   const [isFading, setIsFading] = useState(false);
   const [scrollPos, setScrollPos] = useState(0);
+
   const scrollContainerRef = useRef(null);
   const sceneRef = useRef(null);
   const hasRedirected = useRef(false);
 
-  // 스크롤 → 프레임 계산 (기존 유지)
+  // 스크롤 → 프레임 연결
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
     let ticking = false;
 
-    const updateFrameFromScroll = () => {
+    const updateFrame = () => {
       const maxScrollTop = container.scrollHeight - container.clientHeight;
       const scrollTop = container.scrollTop;
-      const scrollFraction = maxScrollTop > 0 ? (scrollTop / maxScrollTop) : 0;
-      const frameIndex = Math.min(TOTAL_FRAMES - 1, Math.floor(scrollFraction * TOTAL_FRAMES));
+      const scrollFraction = maxScrollTop > 0 ? scrollTop / maxScrollTop : 0;
+      const frameIndex = Math.min(
+        TOTAL_FRAMES - 1,
+        Math.floor(scrollFraction * TOTAL_FRAMES)
+      );
 
       setCurrentFrame((prev) => (prev !== frameIndex ? frameIndex : prev));
       setScrollPos(scrollTop.toFixed(0));
 
+      // 스크롤 바닥 -> 페이드아웃 후 이동
       const distanceFromBottom = maxScrollTop - scrollTop;
       if (distanceFromBottom < 300 && !hasRedirected.current) {
         hasRedirected.current = true;
         setIsFading(true);
-        setTimeout(() => { window.location.href = REDIRECT_URL; }, 1500);
+
+        setTimeout(() => {
+          window.location.href = REDIRECT_URL;
+        }, 1500);
       }
     };
 
-    const handleScroll = () => {
+    const onScroll = () => {
       if (ticking) return;
       ticking = true;
-      requestAnimationFrame(() => { updateFrameFromScroll(); ticking = false; });
+      requestAnimationFrame(() => {
+        updateFrame();
+        ticking = false;
+      });
     };
 
-    updateFrameFromScroll();
-    container.addEventListener('scroll', handleScroll, { passive: true });
-    return () => container.removeEventListener('scroll', handleScroll);
+    updateFrame();
+    container.addEventListener('scroll', onScroll, { passive: true });
+    return () => container.removeEventListener('scroll', onScroll);
   }, []);
 
-  // 프리로드 (기존 유지)
+  // 프레임 선로드
   useEffect(() => {
     if (!effectsOn) return;
     const preloadCount = 5;
+
     for (let i = 1; i <= preloadCount; i++) {
       const next = currentFrame + i;
       if (next < TOTAL_FRAMES) {
@@ -109,13 +128,13 @@ export default function App() {
     }
   }, [currentFrame, effectsOn]);
 
+  // 마지막 프레임에서 효과 off
   useEffect(() => {
-    const END_BUFFER = 0; 
-    const atEnd = currentFrame >= (TOTAL_FRAMES - 1 - END_BUFFER);
+    const atEnd = currentFrame >= TOTAL_FRAMES - 1;
     setEffectsOn(!atEnd);
   }, [currentFrame]);
 
-  // 카메라 팬 + 마우스 반응 (기존 유지)
+  // 카메라 팬 / 마우스 반응 (기존 유지)
   useEffect(() => {
     if (!effectsOn) return;
 
@@ -124,9 +143,9 @@ export default function App() {
     const MAX_X = CAM_W - SCENE_W;
     const MAX_Y = CAM_H - SCENE_H;
 
-    const PAN_STRENGTH = 0.70;
+    const PAN_STRENGTH = 0.7;
     const LERP_ALPHA = 0.05;
-    const IDLE_DELAY_MS = 1500;
+    const IDLE_DELAY = 1500;
 
     const baseX = (CAM_W - SCENE_W) / 2;
     const baseY = (CAM_H - SCENE_H) / 2;
@@ -134,10 +153,10 @@ export default function App() {
     let targetX = 0, targetY = 0;
     let curX = 0, curY = 0;
 
-    let lastMoveT = performance.now();
-    let lastTickT = performance.now();
+    let lastMove = performance.now();
+    let lastTick = performance.now();
 
-    const invSqCurve = (() => {
+    const invCurve = (() => {
       const k = 0.75;
       const norm = 1 - 1 / (1 + (1 / k) ** 2);
       return (v) => {
@@ -158,45 +177,31 @@ export default function App() {
       const cx = e.clientX ?? e.touches?.[0]?.clientX ?? w / 2;
       const cy = e.clientY ?? e.touches?.[0]?.clientY ?? h / 2;
 
-      const nxRaw = ((cx / w) - 0.5) * 2;
-      const nyRaw = ((cy / h) - 0.5) * 2;
+      const nx = invCurve(((cx / w) - 0.5) * 2);
+      const ny = invCurve(((cy / h) - 0.5) * 2);
 
-      const nx = invSqCurve(nxRaw);
-      const ny = invSqCurve(nyRaw);
-
-      targetX = (MAX_X / 2) * (-nx) * PAN_STRENGTH;
-      targetY = (MAX_Y / 2) * (-ny) * PAN_STRENGTH;
-
-      lastMoveT = performance.now();
+      targetX = (MAX_X / 2) * -nx * PAN_STRENGTH;
+      targetY = (MAX_Y / 2) * -ny * PAN_STRENGTH;
+      lastMove = performance.now();
     };
 
     const onLeave = () => {
-      targetX = 0; targetY = 0;
-      lastMoveT = -Infinity;
+      targetX = 0;
+      targetY = 0;
+      lastMove = -Infinity;
     };
 
     let raf = 0;
     const tick = (now = performance.now()) => {
-      const dt = Math.min(50, now - lastTickT);
-      lastTickT = now;
-      const frames = dt / (1000 / 60);
-      const alphaBase = 1 - Math.pow(1 - LERP_ALPHA, Math.max(1, frames));
+      const dt = now - lastTick;
+      lastTick = now;
 
-      if (now - lastMoveT > IDLE_DELAY_MS) {
-        targetX = 0; targetY = 0;
+      if (now - lastMove > IDLE_DELAY) {
+        targetX = 0;
+        targetY = 0;
       }
 
-      const errX = Math.abs(targetX - curX) / (MAX_X / 2);
-      const errY = Math.abs(targetY - curY) / (MAX_Y / 2);
-      const err = Math.min(1, Math.max(errX, errY));
-
-      const k2 = 0.75;
-      const norm2 = 1 - 1 / (1 + (1 / k2) ** 2);
-      const invSq01 = (x) => (1 - 1 / (1 + (x / k2) ** 2)) / norm2;
-
-      const w = 0.6 + 0.8 * invSq01(err);
-      const alpha = Math.min(0.95, alphaBase * w);
-
+      const alpha = LERP_ALPHA;
       curX += (targetX - curX) * alpha;
       curY += (targetY - curY) * alpha;
 
@@ -209,50 +214,50 @@ export default function App() {
     };
     raf = requestAnimationFrame(tick);
 
-    window.addEventListener('mousemove', onMove, { passive: true });
-    window.addEventListener('touchmove', onMove, { passive: true });
-    window.addEventListener('mouseout', onLeave, { passive: true });
-    window.addEventListener('blur', onLeave, { passive: true });
+    window.addEventListener("mousemove", onMove, { passive: true });
+    window.addEventListener("touchmove", onMove, { passive: true });
+    window.addEventListener("mouseout", onLeave, { passive: true });
 
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('touchmove', onMove);
-      window.removeEventListener('mouseout', onLeave);
-      window.removeEventListener('blur', onLeave);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("touchmove", onMove);
+      window.removeEventListener("mouseout", onLeave);
     };
   }, [effectsOn]);
 
+  /* ============================================================
+      렌더
+  ============================================================ */
   return (
     <>
-      {/* ★★★ 여기 프리로더 추가 ★★★ */}
+
+      {/* ★★★ 프리로더 ★★★ */}
       <Preloader visible={loading} progress={loadProgress} />
 
-      {/* 기존 구조 */}
+      {/* ---------- 기존 화면 ---------- */}
       <div className="page-1920">
         <div ref={scrollContainerRef} className="scroll-container">
           <div className="scroll-content">
             <img
               src={getImagePath(currentFrame)}
-              alt={`Frame ${currentFrame + 1}`}
+              alt=""
               className="sticky-image"
-              aria-hidden="true"
-              style={{ opacity: 0, pointerEvents: 'none' }}
+              style={{ opacity: 0, pointerEvents: "none" }}
             />
-            <div style={{ height: '300vh' }} />
+            <div style={{ height: "300vh" }} />
           </div>
         </div>
       </div>
 
       <div
         className="camera-space"
-        aria-hidden="true"
         style={{
-          width: '2100px',
-          height: '1200px',
-          visibility: effectsOn ? 'visible' : 'hidden',
+          width: "2100px",
+          height: "1200px",
+          visibility: effectsOn ? "visible" : "hidden",
           opacity: effectsOn ? 1 : 0,
-          transition: 'opacity 200ms linear',
+          transition: "opacity 200ms linear",
         }}
       >
         <div ref={sceneRef} className="camera-scene">
@@ -260,43 +265,40 @@ export default function App() {
         </div>
       </div>
 
-      {effectsOn ? <FXOverlay /> : null}
+      {effectsOn && <FXOverlay />}
 
+      {/* 디버그 */}
       <div
         style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          padding: '8px 14px',
-          background: 'rgba(0,0,0,0.6)',
-          color: '#0f0',
-          fontFamily: 'monospace',
-          fontSize: '14px',
-          borderRadius: '6px',
+          position: "fixed",
+          bottom: 20,
+          right: 20,
+          padding: "8px 14px",
+          background: "rgba(0,0,0,0.6)",
+          color: "#0f0",
+          fontFamily: "monospace",
           zIndex: 99999,
-          pointerEvents: 'none',
-          boxShadow: '0 0 6px rgba(0,0,0,0.4)',
+          pointerEvents: "none",
         }}
       >
         scrollTop: {scrollPos}px
       </div>
 
+      {/* 페이드아웃 */}
       {isFading && (
         <div
           style={{
-            position: 'fixed',
+            position: "fixed",
             inset: 0,
-            backgroundColor: '#000',
+            backgroundColor: "#000",
             opacity: 0,
-            animation: 'fadeOutOverlay 1.2s forwards',
+            animation: "fadeOutOverlay 1.2s forwards",
             zIndex: 100000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontSize: '28px',
-            fontWeight: '500',
-            letterSpacing: '0.02em',
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#fff",
+            fontSize: "28px",
           }}
         >
           사이트로 이동중...
@@ -306,11 +308,11 @@ export default function App() {
       <style>{`
         @keyframes fadeOutOverlay {
           0% { opacity: 0; }
-          20% { opacity: 0.2; }
-          50% { opacity: 0.6; }
+          50% { opacity: 0.5; }
           100% { opacity: 1; }
         }
       `}</style>
+
     </>
   );
 }
