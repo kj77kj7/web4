@@ -3,7 +3,6 @@ import FXOverlay from "./FXOverlay";
 import "./index.css";
 
 import Preloader from "./Preloader.jsx";
-import "./Preloader.css";
 
 // --- 설정 ---
 const TOTAL_FRAMES = 1132;
