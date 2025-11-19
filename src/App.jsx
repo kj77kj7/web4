@@ -8,7 +8,7 @@ import "./Preloader.css";
 // --- 설정 ---
 const TOTAL_FRAMES = 1132;
 const getImagePath = (frame) => `/web4/frames/(${frame + 1}).jpg`;
-const REDIRECT_URL = "https://www.naver.com";
+const REDIRECT_URL = "https://kj77kj7.github.io/WEB5/";
 // ---
 
 export default function App() {
