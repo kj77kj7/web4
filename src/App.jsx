@@ -2,24 +2,66 @@ import React, { useState, useEffect, useRef } from 'react';
 import FXOverlay from './FXOverlay';
 import './index.css';
 
+import Preloader from "./Preloader.jsx";    // ★ 추가
+
 // --- 설정 (유지) ---
-// ✅ 시퀀스 총 장수: 1132장으로 고정
 const TOTAL_FRAMES = 1132;
 const getImagePath = (frame) => `/web4/frames/(${frame + 1}).jpg`;
-// ✅ 스크롤 끝 → 페이드아웃 후 이동할 URL
 const REDIRECT_URL = 'https://www.naver.com';
 // --- 
 
 export default function App() {
+
+  // ★ 프리로더 상태
+  const [loading, setLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(0);
+
+  // ★ 프리로더 로딩 로직
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadImage = (src) =>
+      new Promise((resolve) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = resolve;
+        img.src = src;
+      });
+
+    // 프레임 40개만 샘플 프리로드 (전체 1132장 로딩 X)
+    const sample = Array.from({ length: 40 }, (_, i) => getImagePath(i));
+
+    const total = sample.length + 1;
+    let done = 0;
+
+    const bump = () => {
+      done += 1;
+      const percent = Math.min(100, (done / total) * 100);
+      if (!cancelled) setLoadProgress(percent);
+    };
+
+    Promise.all([
+      ...sample.map((s) => loadImage(s).then(bump)),
+      new Promise((r) => setTimeout(r, 900)).then(bump),   // 최소 지속시간
+    ]).then(() => {
+      if (cancelled) return;
+      setLoadProgress(100);
+      setTimeout(() => setLoading(false), 350);
+    });
+
+    return () => { cancelled = true; };
+  }, []);
+
+  // ★ 기존 코드
   const [currentFrame, setCurrentFrame] = useState(0);
-  const [effectsOn, setEffectsOn] = useState(true); // ✅ 효과 켜짐/꺼짐
-  const [isFading, setIsFading] = useState(false);  // ✅ 페이드아웃 상태
-  const [scrollPos, setScrollPos] = useState(0);    // (옵션) 디버그용
+  const [effectsOn, setEffectsOn] = useState(true);
+  const [isFading, setIsFading] = useState(false);
+  const [scrollPos, setScrollPos] = useState(0);
   const scrollContainerRef = useRef(null);
   const sceneRef = useRef(null);
-  const hasRedirected = useRef(false);              // ✅ 중복 이동 방지
+  const hasRedirected = useRef(false);
 
-  // 스크롤 → 프레임 (+ 끝에서 페이드아웃 & 이동)
+  // 스크롤 → 프레임 계산 (기존 유지)
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -35,15 +77,11 @@ export default function App() {
       setCurrentFrame((prev) => (prev !== frameIndex ? frameIndex : prev));
       setScrollPos(scrollTop.toFixed(0));
 
-      // ✅ 스크롤 바닥 근처 (여유 300px) → 페이드아웃 + 이동
       const distanceFromBottom = maxScrollTop - scrollTop;
       if (distanceFromBottom < 300 && !hasRedirected.current) {
         hasRedirected.current = true;
-        setIsFading(true); // 페이드 시작
-        // 1.5초 뒤 이동
-        setTimeout(() => {
-          window.location.href = REDIRECT_URL;
-        }, 1500);
+        setIsFading(true);
+        setTimeout(() => { window.location.href = REDIRECT_URL; }, 1500);
       }
     };
 
@@ -53,13 +91,12 @@ export default function App() {
       requestAnimationFrame(() => { updateFrameFromScroll(); ticking = false; });
     };
 
-    // 최초 1회 계산 + 리스너 등록
     updateFrameFromScroll();
     container.addEventListener('scroll', handleScroll, { passive: true });
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // 프리로드 (효과가 켜져 있을 때만)
+  // 프리로드 (기존 유지)
   useEffect(() => {
     if (!effectsOn) return;
     const preloadCount = 5;
@@ -72,14 +109,13 @@ export default function App() {
     }
   }, [currentFrame, effectsOn]);
 
-  // ✅ 시퀀스 종료 감지 → 효과 끄기(그리고 위로 다시 스크롤하면 자동 재활성)
   useEffect(() => {
     const END_BUFFER = 0; 
     const atEnd = currentFrame >= (TOTAL_FRAMES - 1 - END_BUFFER);
     setEffectsOn(!atEnd);
   }, [currentFrame]);
 
-  // ✅ 카메라 팬(반전) + 역제곱 커브 + 마우스 멈추면 중앙 복귀
+  // 카메라 팬 + 마우스 반응 (기존 유지)
   useEffect(() => {
     if (!effectsOn) return;
 
@@ -89,7 +125,7 @@ export default function App() {
     const MAX_Y = CAM_H - SCENE_H;
 
     const PAN_STRENGTH = 0.70;
-    const LERP_ALPHA   = 0.05;
+    const LERP_ALPHA = 0.05;
     const IDLE_DELAY_MS = 1500;
 
     const baseX = (CAM_W - SCENE_W) / 2;
@@ -119,8 +155,8 @@ export default function App() {
 
     const onMove = (e) => {
       const w = window.innerWidth, h = window.innerHeight;
-      const cx = e.clientX ?? (e.touches && e.touches[0]?.clientX) ?? w / 2;
-      const cy = e.clientY ?? (e.touches && e.touches[0]?.clientY) ?? h / 2;
+      const cx = e.clientX ?? e.touches?.[0]?.clientX ?? w / 2;
+      const cy = e.clientY ?? e.touches?.[0]?.clientY ?? h / 2;
 
       const nxRaw = ((cx / w) - 0.5) * 2;
       const nyRaw = ((cy / h) - 0.5) * 2;
@@ -128,7 +164,6 @@ export default function App() {
       const nx = invSqCurve(nxRaw);
       const ny = invSqCurve(nyRaw);
 
-      // 반전된 카메라 이동
       targetX = (MAX_X / 2) * (-nx) * PAN_STRENGTH;
       targetY = (MAX_Y / 2) * (-ny) * PAN_STRENGTH;
 
@@ -147,7 +182,6 @@ export default function App() {
       const frames = dt / (1000 / 60);
       const alphaBase = 1 - Math.pow(1 - LERP_ALPHA, Math.max(1, frames));
 
-      // 마우스/터치 멈춤 → 중앙 복귀
       if (now - lastMoveT > IDLE_DELAY_MS) {
         targetX = 0; targetY = 0;
       }
@@ -191,11 +225,13 @@ export default function App() {
 
   return (
     <>
-      {/* 1920 고정 폭 컨텐츠: 스크롤/프레임 계산용 */}
+      {/* ★★★ 여기 프리로더 추가 ★★★ */}
+      <Preloader visible={loading} progress={loadProgress} />
+
+      {/* 기존 구조 */}
       <div className="page-1920">
         <div ref={scrollContainerRef} className="scroll-container">
           <div className="scroll-content">
-            {/* 이 이미지는 프레임 계산용(보이지 않음) */}
             <img
               src={getImagePath(currentFrame)}
               alt={`Frame ${currentFrame + 1}`}
@@ -208,7 +244,6 @@ export default function App() {
         </div>
       </div>
 
-      {/* Camera Space */}
       <div
         className="camera-space"
         aria-hidden="true"
@@ -225,15 +260,8 @@ export default function App() {
         </div>
       </div>
 
-      {/* FX 오버레이 */}
       {effectsOn ? <FXOverlay /> : null}
 
-      {/* ▼▼ 일반 웹 페이지 ▼▼ 
-          ⛔️ 요청에 따라 "사이트 시작" 섹션은 제거하고
-          스크롤 바닥에서 페이드아웃 후 REDIRECT_URL 로 이동합니다. */}
-      {/* (필요시 여기에 후속 일반 콘텐츠를 추가하세요) */}
-
-      {/* ✅ (옵션) 스크롤값 디버그 박스 */}
       <div
         style={{
           position: 'fixed',
@@ -253,7 +281,6 @@ export default function App() {
         scrollTop: {scrollPos}px
       </div>
 
-      {/* ✅ 페이드아웃 오버레이 */}
       {isFading && (
         <div
           style={{
@@ -276,7 +303,6 @@ export default function App() {
         </div>
       )}
 
-      {/* ✅ 페이드아웃 애니메이션 정의 */}
       <style>{`
         @keyframes fadeOutOverlay {
           0% { opacity: 0; }
